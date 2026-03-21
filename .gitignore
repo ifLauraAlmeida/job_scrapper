@@ -95,8 +95,8 @@ instance/
 # Documentation
 docs/_build/
 /site
-.csv
-.html
+*.csv
+*.html
 
 # Jupyter / IPython
 .ipynb_checkpoints
