@@ -28,6 +28,9 @@ output/
 Thumbs.db
 desktop.ini
 
+# Google Sheets
+google_credentials.json
+
 # ==============================================================================
 # PYTHON STANDARD (Byte-compiled, distributions, etc.)
 # ==============================================================================
