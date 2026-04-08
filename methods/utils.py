@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from methods.setup_logger import get_logger
 
 logger = get_logger("utils")
@@ -8,13 +9,20 @@ class Utils:
         pass
     
     def createDir(self, directory):
-        if not os.path.exists(directory):
-            os.mkdir(directory)
-            logger.debug("Diretório criado: %s", directory)
+        # Trocamos os.path.exists + os.mkdir por os.makedirs
+        # exist_ok=True: Se a pasta já existir, ele não faz nada (e não dá erro)
+        try:
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+                logger.debug("Diretório criado (incluindo pais, se necessário): %s", directory)
+        except Exception as e:
+            logger.error("Falha ao criar diretório %s: %s", directory, e)
             
     def listDir(self, directory):
         try:
-            return os.listdir(directory)
+            if os.path.exists(directory):
+                return os.listdir(directory)
+            return []
         except Exception as e:
             logger.error("Falha ao listar diretório %s: %s", directory, e, exc_info=True)
             return []

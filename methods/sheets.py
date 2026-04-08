@@ -58,3 +58,18 @@ class Sheets:
         titles = [ws.title for ws in worksheets]
         logger.info("Planilhas disponíveis: %s", titles)
         return titles
+
+    def overwrite(self, df: pd.DataFrame, worksheet_index: int = 0):
+        # 1. Limpa a aba
+        self.clear(worksheet_index)
+        worksheet = self.get_worksheet(worksheet_index)
+        
+        # 2. Prepara os dados: Cabeçalho + Linhas
+        # Convertemos o DataFrame para uma lista de listas (formato que o gspread entende)
+        data_to_upload = [df.columns.tolist()] + df.values.tolist()
+        
+        # 3. Faz o upload de TUDO de uma vez só (Batch Update)
+        # O método update() envia o bloco inteiro começando pela célula A1
+        worksheet.update("A1", data_to_upload)
+        
+        logger.info("Aba %d sobrescrita via Batch Update com %d registro(s).", worksheet_index, len(df))
