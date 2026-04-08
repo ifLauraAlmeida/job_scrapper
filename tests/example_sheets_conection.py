@@ -1,55 +1,49 @@
 import os
 import sys
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import pandas as pd
 from datetime import datetime
 
-import pandas as pd
+# Adiciona a raiz do projeto ao path para encontrar o pacote 'methods'
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from methods.sheets import Sheets
+from methods.setup_logger import get_logger
 
+# Configuração de Logs
+logger = get_logger("gold_to_sheets")
+
+# --- Configurações ---
 GOOGLE_CREDENTIALS_FILE = "google_credentials.json"
-GOOGLE_SHEETS_ID = "1H3O-8epWYwcxJTiKdD-PkvCRLnVI8tnsD2XeslxD-es"
+GOOGLE_SHEETS_ID = "1xvuHa4a-vOTCQemrV9giBtAc2Z81rs96Dm87KsoLq1E"
+PATH_GOLD_PARQUET = "lake/gold/vagas_consolidadas.parquet"
 
-now = datetime.now().strftime("%Y-%m-%d %H:%M")
+def sync_gold_to_sheets():
+    try:
+        # 1. Carrega os dados da Camada Gold
+        if not os.path.exists(PATH_GOLD_PARQUET):
+            logger.error("Arquivo Gold nao encontrado em: %s", PATH_GOLD_PARQUET)
+            return
 
-sheets = Sheets(GOOGLE_CREDENTIALS_FILE, GOOGLE_SHEETS_ID)
+        logger.info("Lendo dados da camada Gold...")
+        df_gold = pd.read_parquet(PATH_GOLD_PARQUET)
 
-# ── ABA 1: ler, printar e adicionar um registro ─────────────────────────────
+        # 2. Tratamento opcional: Google Sheets nao lida bem com NaN/Null
+        # Vamos substituir valores nulos por strings vazias para evitar erros no gspread
+        df_gold = df_gold.fillna("")
 
-print("=== ABA 1 — Dados atuais ===")
-df_aba1 = sheets.read(worksheet_index=1)
-print(df_aba1)
-print()
+        # 3. Conexao com a Planilha
+        sheets = Sheets(GOOGLE_CREDENTIALS_FILE, GOOGLE_SHEETS_ID)
+        
+        # 4. Envio dos dados (Overwrite para manter a planilha sempre atualizada com o consolidado)
+        logger.info("Enviando %d registros para o Google Sheets...", len(df_gold))
+        
+        # Usando index=0 conforme o ID que voce passou (gid=0)
+        sheets.overwrite(df_gold, worksheet_index=0)
+        
+        logger.info("Sucesso: Planilha atualizada com os dados da Camada Gold.")
 
-novo_registro_aba1 = pd.DataFrame(
-    [[now, "Engenheiro de Dados Jr", "https://example.com/vaga1"]],
-    columns=["Timestamp", "Titulo", "Link"],
-)
+    except Exception as e:
+        logger.error("Falha ao sincronizar Gold com Sheets: %s", e, exc_info=True)
 
-sheets.append(novo_registro_aba1, worksheet_index=1)
-print("Registro adicionado na aba 1:")
-print(novo_registro_aba1)
-print()
-
-# ── ABA 2: ler, printar, limpar e popular ────────────────────────────────────
-
-print("=== ABA 2 — Dados atuais ===")
-df_aba2 = sheets.read(worksheet_index=2)
-print(df_aba2)
-print()
-
-novos_registros_aba2 = pd.DataFrame(
-    [
-        [now, "Analista de Dados Pleno", "https://example.com/vaga2"],
-        [now, "Cientista de Dados Sr", "https://example.com/vaga3"],
-        [now, "Engenheiro de Machine Learning", "https://example.com/vaga4"],
-        [now, "Arquiteto de Dados", "https://example.com/vaga5"],
-    ],
-    columns=["Timestamp", "Titulo", "Link"],
-)
-
-sheets.overwrite(novos_registros_aba2, worksheet_index=2)
-print("Aba 2 repopulada com:")
-print(novos_registros_aba2)
+if __name__ == "__main__":
+    sync_gold_to_sheets()
