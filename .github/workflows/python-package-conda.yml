@@ -1,0 +1,40 @@
+name: Execução Diária do Scraper
+
+on:
+  schedule:
+    # 09:00 BRT (Brasília) é 12:00 UTC.
+    - cron: '0 12 * * *'
+  workflow_dispatch: # Permite rodar manualmente pelo botão na aba Actions
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout do código
+      uses: actions/checkout@v4
+
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Instalar dependências (Conda)
+      run: |
+        # Adiciona conda ao path e atualiza o ambiente usando o environment.yml
+        echo $CONDA/bin >> $GITHUB_PATH
+        conda env update --file environment.yml --name base
+
+    - name: Criar arquivo de credenciais Google
+      run: |
+        # Transforma o conteúdo do Secret GOOGLE_JSON em um arquivo físico
+        echo '${{ secrets.GOOGLE_JSON }}' > google_credentials.json
+
+    - name: Executar Scraper
+      run: python app.py
+      env:
+        # Mapeamento dos Secrets para o código
+        ENGENHA_EMAIL: ${{ secrets.ENGENHA_EMAIL }}
+        ENGENHA_PASSWORD: ${{ secrets.ENGENHA_PASSWORD }}
+        PROJECT_MODE: "production"
+        PYTHONPATH: .
